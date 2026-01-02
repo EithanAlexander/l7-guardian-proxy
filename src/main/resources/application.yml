@@ -1,0 +1,19 @@
+spring:
+  profiles:
+    active: dev
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8080
+
+
+proxy:
+  backend:
+    uri: https://httpbin.org  # Great for testing (echos requests back)
+  guardian:
+    security:
+      allowed-paths:
+        - /get
+        - /post
