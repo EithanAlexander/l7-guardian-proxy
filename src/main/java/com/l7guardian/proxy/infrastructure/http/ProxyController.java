@@ -1,6 +1,7 @@
 package com.l7guardian.proxy.infrastructure.http;
 
 
+import com.l7guardian.proxy.core.exception.RequestPayloadTooLargeException;
 import com.l7guardian.proxy.domain.model.ProxyRequest;
 import com.l7guardian.proxy.infrastructure.forward.ProxyForwarder;
 import com.l7guardian.proxy.infrastructure.forward.ProxyForwardingException;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 /**
@@ -89,9 +91,25 @@ public class ProxyController {
             // 3. Map domain response → HTTP response
             return responseMapper.toResponseEntity(proxyResponse);
 
-        } catch (ProxyForwardingException ex) {
+        } catch (RequestPayloadTooLargeException ex) {
+            // e.g. request body exceeds max allowed size
+            log.warn(
+                    "Rejected request: requestId={} method={} uri={} reason={}",
+                    requestId,
+                    servletRequest.getMethod(),
+                    servletRequest.getRequestURI(),
+                    ex.getMessage()
+            );
+
+            return ResponseEntity
+                    .status(413)
+                    .header("Content-Type", "application/json")
+                    .body("{\"error\":\"payload_too_large\"}".getBytes(StandardCharsets.UTF_8));
+
+
+            } catch (ProxyForwardingException ex) {
             log.error(
-                    "Failed to read incoming request: requestId={} method={} uri={}",
+                    "Failed to forward request to backend: requestId={} method={} uri={}",
                     requestId,
                     servletRequest.getMethod(),
                     servletRequest.getRequestURI(),
