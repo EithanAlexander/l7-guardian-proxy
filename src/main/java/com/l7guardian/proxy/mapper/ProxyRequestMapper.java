@@ -1,5 +1,6 @@
 package com.l7guardian.proxy.mapper;
 
+import com.l7guardian.proxy.core.exception.RequestPayloadTooLargeException;
 import com.l7guardian.proxy.domain.model.ProxyRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -40,11 +41,15 @@ public class ProxyRequestMapper {
     public ProxyRequest map(HttpServletRequest request) throws IOException {
         String method = request.getMethod();
         String path = request.getRequestURI();
+        String query = request.getQueryString();
+        String pathWithQuery = (query == null || query.isBlank())
+                ? path : path + "?" + query;
 
         Map<String, List<String>> headers = extractHeaders(request);
         byte[] body = readBody(request);
 
-        return ProxyRequest.of(method, path, headers, body, maxBodySize);
+        return ProxyRequest.of(method, pathWithQuery, headers, body, maxBodySize);
+
     }
 
     /**
@@ -96,7 +101,7 @@ public class ProxyRequestMapper {
             while ((bytesRead = input.read(chunk)) != -1) {
                 totalRead += bytesRead;
                 if (totalRead > maxBodySize) {
-                    throw new IllegalArgumentException(
+                    throw new RequestPayloadTooLargeException(
                             "Request body exceeds max allowed size: " + maxBodySize
                     );
                 }

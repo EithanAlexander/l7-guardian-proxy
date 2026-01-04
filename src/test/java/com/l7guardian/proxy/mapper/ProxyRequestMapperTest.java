@@ -1,5 +1,6 @@
 package com.l7guardian.proxy.mapper;
 
+import com.l7guardian.proxy.core.exception.RequestPayloadTooLargeException;
 import com.l7guardian.proxy.domain.model.ProxyRequest;
 import jakarta.servlet.ServletInputStream;
 import lombok.SneakyThrows;
@@ -9,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockHttpServletRequest;
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -51,7 +54,7 @@ class ProxyRequestMapperTest {
         // Verify headers (Note: ProxyRequest.of() normalizes keys to lowercase)
         assertTrue(result.headers().containsKey("content-type"));
         assertTrue(result.headers().containsKey("x-request-id"));
-        assertEquals("12345", result.headers().get("x-request-id").get(0));
+        assertEquals("12345", result.headers().get("x-request-id").getFirst());
 
         // Verify Body
         assertArrayEquals(jsonBody.getBytes(StandardCharsets.UTF_8), result.body());
@@ -83,11 +86,14 @@ class ProxyRequestMapperTest {
         request.setContent(hugeBody.getBytes(StandardCharsets.UTF_8));
 
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+        RequestPayloadTooLargeException exception = assertThrows(RequestPayloadTooLargeException.class, () ->
                 mapper.map(request)
         );
 
-        assertTrue(exception.getMessage().contains("exceeds max allowed size"));
+        assertThat(exception)
+                .isInstanceOf(RequestPayloadTooLargeException.class)
+                .hasMessageContaining("exceeds max allowed size");
+
     }
 
     @Test
